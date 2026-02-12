@@ -1,9 +1,11 @@
 const bcrypt = require('bcryptjs')
-const { User, Tweet, Reply, Like, Followship } = require('../models')
+const { User, Tweet, Reply, Like, Followship, Notification } = require('../models')
 const helpers = require('../_helpers')
 const jwt = require('jsonwebtoken')
 const JWTSECRET = process.env.JWT_SECRET || 'alphacamp'
 const Sequelize = require('sequelize')
+const { sendNotification } = require('../utils/socketNotifier')
+
 const userServices = {
   signUp: (req, cb) => {
     let { account, name, email, password, checkPassword } = req.body
@@ -36,23 +38,48 @@ const userServices = {
       .then(createdUser => cb(null, { createdUser }))
       .catch(err => cb(err))
   },
-  getUser: (req, cb) => {
-    return User.findByPk(req.params.id, {
-      attributes: { exclude: ['password'] },
-      include: [
-        { model: User, as: 'Followers' },
-        { model: User, as: 'Followings' }
-      ]
-    })
-      .then(user => {
-        if (!user) throw new Error("User didn't exists!")
-        const userData = user.toJSON()
-        userData.Followers = userData.Followers.length
-        userData.Followings = userData.Followings.length
-        userData.isFollowed = helpers.getUser(req).Followings.some(f => f.id === userData.id)
-        return cb(null, userData)
-      })
-      .catch(err => cb(err))
+  getUser: async (req, cb) => {
+    try {
+      const userId = req.params.id;
+
+      const user = await User.findByPk(userId, {
+        attributes: { exclude: ['password'] },
+        include: [
+          { model: User, as: 'Followers' },
+          { model: User, as: 'Followings' }
+        ]
+      });
+
+      if (!user) throw new Error("User didn't exists!");
+
+      // 取得當前登入用戶的追蹤清單
+      const currentUser = await User.findByPk(helpers.getUser(req).id, {
+        include: [{ model: User, as: 'Followings' }]
+      });
+
+      // 檢查當前用戶是否已追蹤此用戶，並獲取通知設定
+      let notificationEnabled = false;
+      const followship = await Followship.findOne({
+        where: {
+          followerId: helpers.getUser(req).id,
+          followingId: userId
+        }
+      });
+
+      if (followship) {
+        notificationEnabled = followship.notificationEnabled !== false; // 預設為 true
+      }
+
+      const data = user.toJSON();
+      data.Followers = data.Followers.length;
+      data.Followings = data.Followings.length;
+      data.isFollowed = currentUser ? currentUser.Followings.some(f => f.id === data.id) : false;
+      data.notificationEnabled = notificationEnabled;
+
+      return cb(null, data);
+    } catch (err) {
+      cb(err);
+    }
   },
   getUserTweets: (req, cb) => {
     return Promise.all([
@@ -121,7 +148,7 @@ const userServices = {
       .catch(err => cb(err))
   },
   getUserFollowings: (req, cb) => {
-      return User.findByPk(req.params.id, {
+    return User.findByPk(req.params.id, {
       include: [
         { model: User, as: 'Followings' }
       ]
@@ -144,12 +171,12 @@ const userServices = {
       .catch(err => cb(err))
   },
   getUserFollowers: (req, cb) => {
-      return User.findByPk(req.params.id, {
-        include: [
-          { model: User, as: 'Followers' }
-        ]
-      })
-    
+    return User.findByPk(req.params.id, {
+      include: [
+        { model: User, as: 'Followers' }
+      ]
+    })
+
       .then((user) => {
         if (!user) throw new Error("User didn't exists!")
         const userFollowers = user.Followers.map(f => ({
@@ -236,12 +263,15 @@ const userServices = {
       .catch(err => cb(err))
   },
   addFollowing: (req, cb) => {
+    let createdFollowship = null;
+    const followingId = req.body.id;
+
     return Promise.all([
-      User.findByPk(req.body.id),
+      User.findByPk(followingId),
       Followship.findOne({
         where: {
           followerId: helpers.getUser(req).id,
-          followingId: req.body.id
+          followingId: followingId
         }
       })
     ])
@@ -250,10 +280,27 @@ const userServices = {
         if (followship) throw new Error('You are already following this user!')
         return Followship.create({
           followerId: helpers.getUser(req).id,
-          followingId: req.body.id
+          followingId: followingId,
+          notificationEnabled: true
         })
       })
-      .then(addfollowing => cb(null, addfollowing))
+      .then(followship => {
+        createdFollowship = followship;
+        // 創建追蹤通知給被追蹤的用戶
+        return Notification.create({
+          recipientId: followingId,
+          senderId: helpers.getUser(req).id,
+          type: 'new_follower',
+          tweetId: null,
+          replyId: null,
+          isRead: false
+        });
+      })
+      .then(notification => {
+        // 發送即時通知
+        sendNotification(followingId, notification);
+        return cb(null, createdFollowship);
+      })
       .catch(err => cb(err))
   },
   removeFollowing: (req, cb) => {
@@ -286,6 +333,27 @@ const userServices = {
         return cb(null, result)
       })
       .catch(err => cb(err))
+  },
+  toggleNotification: (req, cb) => {
+    const { notificationEnabled } = req.body;
+    const followingId = req.params.followingId;
+    const followerId = helpers.getUser(req).id;
+
+    return Followship.findOne({
+      where: {
+        followerId,
+        followingId
+      }
+    })
+      .then(followship => {
+        if (!followship) throw new Error("You haven't followed this user!");
+        return followship.update({ notificationEnabled });
+      })
+      .then(updatedFollowship => cb(null, {
+        status: 'success',
+        notificationEnabled: updatedFollowship.notificationEnabled
+      }))
+      .catch(err => cb(err));
   }
 }
 module.exports = userServices

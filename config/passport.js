@@ -1,42 +1,68 @@
 const passport = require('passport')
 const LocalStrategy = require('passport-local')
-const passportJWT = require('passport-jwt')
+const { Strategy: JWTStrategy, ExtractJwt: ExtractJWT } = require('passport-jwt')
 const bcrypt = require('bcryptjs')
 const { User } = require('../models')
-const JWTSECRET = process.env.JWT_SECRET || 'alphacamp'
 
-const JWTStrategy = passportJWT.Strategy
-const ExtractJWT = passportJWT.ExtractJwt
-
-passport.use(new LocalStrategy(
-  {
+// 將設定集中管理
+const config = {
+  jwt: {
+    secret: process.env.JWT_SECRET || 'alphacamp',
+    options: {
+      jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
+      secretOrKey: process.env.JWT_SECRET || 'alphacamp'
+    }
+  },
+  local: {
     usernameField: 'account',
     passwordField: 'password'
-  },
-  (account, password, cb) => {
-    User.findOne({ where: { account } })
-      .then(user => {
-        if (!user) throw new Error("User didn't exists!")
-        if (!bcrypt.compareSync(password, user.password)) throw new Error("Account or Password Error!")
-        return cb(null, user)
-      })
-      .catch(err => cb(err, false))
+  }
+}
+
+// 本地驗證策略
+passport.use(new LocalStrategy(
+  config.local,
+  async (account, password, done) => {
+    try {
+      const user = await User.findOne({ where: { account } })
+
+      if (!user) {
+        return done(null, false, { message: "使用者不存在" })
+      }
+
+      const isValidPassword = await bcrypt.compare(password, user.password)
+      if (!isValidPassword) {
+        return done(null, false, { message: "帳號或密碼錯誤" })
+      }
+
+      return done(null, user)
+    } catch (error) {
+      return done(error)
+    }
   }
 ))
 
-const jwtOptions = {
-  jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
-  secretOrKey: JWTSECRET
-}
-passport.use(new JWTStrategy(jwtOptions, (jwtPayload, cb) => {
-  User.findByPk(jwtPayload.id, {
-    include: [
-      { model: User, as: 'Followers' },
-      { model: User, as: 'Followings' }
-    ]
-  })
-    .then(user => cb(null, user.toJSON()))
-    .catch(err => cb(err))
-}))
+// JWT 驗證策略
+passport.use(new JWTStrategy(
+  config.jwt.options,
+  async (jwtPayload, done) => {
+    try {
+      const user = await User.findByPk(jwtPayload.id, {
+        include: [
+          { model: User, as: 'Followers' },
+          { model: User, as: 'Followings' }
+        ]
+      })
+
+      if (!user) {
+        return done(null, false)
+      }
+
+      return done(null, user.toJSON())
+    } catch (error) {
+      return done(error)
+    }
+  }
+))
 
 module.exports = passport

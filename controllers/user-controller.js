@@ -44,6 +44,9 @@ const userController = {
   },
   getTopUsers: (req, res, next) => {
     userServices.getTopUsers(req, (err, gettopusers) => err ? next(err) : res.json(gettopusers))
+  },
+  toggleNotification: (req, res, next) => {
+    userServices.toggleNotification(req, (err, result) => err ? next(err) : res.json(result))
   }
 }
 module.exports = userController 
