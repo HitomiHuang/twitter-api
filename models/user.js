@@ -16,7 +16,8 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'followingId',
       as: 'Followers'
     })
-
+    User.hasMany(models.ChatMessage, { foreignKey: 'senderId', as: 'sentMessages' })
+    User.hasMany(models.ChatMessage, { foreignKey: 'receiverId', as: 'receivedMessages' })
   }
   User.init({
     email: DataTypes.STRING,

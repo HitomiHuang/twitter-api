@@ -4,6 +4,7 @@ const passport = require('../config/passport')
 const admin = require('./modules/admin')
 const users = require('./modules/users')
 const tweets = require('./modules/tweets')
+const chat = require('./modules/chat')
 const { authenticated, authenticatedUser, authenticatedAdmin } = require('../middleware/auth')
 const tweetController = require('../controllers/tweet-controller')
 const userController = require('../controllers/user-controller')
@@ -28,6 +29,7 @@ router.get('/tweets', authenticated, authenticatedUser, tweetController.getTweet
 router.use('/admin', authenticated, authenticatedAdmin, admin)
 router.use('/users', authenticated, authenticatedUser, users)
 router.use('/tweets', authenticated, authenticatedUser, tweets)
+router.use('/chat', authenticated, authenticatedUser, chat)
 
 
 router.use('/', apiErrorHandler)
