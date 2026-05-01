@@ -82,13 +82,17 @@ const userServices = {
     }
   },
   getUserTweets: (req, cb) => {
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = parseInt(req.query.offset) || 0;
     return Promise.all([
       User.findByPk(req.params.id, { raw: true }),
       Tweet.findAll(
         {
           where: { UserId: req.params.id },
           include: [{ model: User, attributes: ['id', 'name', 'account', 'avatar'] }, { model: Reply }, { model: Like }],
-          order: [['createdAt', 'DESC']]
+          order: [['createdAt', 'DESC']],
+          limit,
+          offset
         })
     ])
       .then(([user, tweets]) => {
@@ -104,6 +108,8 @@ const userServices = {
       .catch(err => cb(err))
   },
   getUserRepliedTweets: (req, cb) => {
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = parseInt(req.query.offset) || 0;
     return Promise.all([
       User.findByPk(req.params.id, { raw: true }),
       Reply.findAll({
@@ -112,7 +118,9 @@ const userServices = {
           { model: Tweet, include: [{ model: User, attributes: ['id', 'name', 'account', 'avatar'] }] },
           { model: User, attributes: ['id', 'name', 'account', 'avatar'] }
         ],
-        order: [['createdAt', 'DESC']]
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
       })
     ])
       .then(([user, replies]) => {
@@ -127,12 +135,16 @@ const userServices = {
 
   },
   getUserLikes: (req, cb) => {
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = parseInt(req.query.offset) || 0;
     return Promise.all([
       User.findByPk(req.params.id, { raw: true }),
       Like.findAll({
         where: { UserId: req.params.id },
         include: [{ model: Tweet, include: [{ model: User, attributes: ['id', 'name', 'account', 'avatar'] }, { model: Reply }, { model: Like }] }],
-        order: [['createdAt', 'DESC']]
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
       })
     ])
       .then(([user, likes]) => {

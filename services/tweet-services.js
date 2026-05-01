@@ -99,10 +99,14 @@ const tweetController = {
   },
   getTweets: (req, cb) => {
     const currentUser = helpers.getUser(req);
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = parseInt(req.query.offset) || 0;
 
     return Tweet.findAll({
       order: [['createdAt', 'DESC']],
-      include: [Like, Reply, User]
+      include: [Like, Reply, User],
+      limit,
+      offset
     })
       .then(tweet => {
         const likeCount = tweet.map(r => ({
