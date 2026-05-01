@@ -1,7 +1,29 @@
 'use strict'
 
-const faker = require('faker')
 const { User, Tweet } = require('../models')
+
+const replyPool = [
+  '天啊這根本就是在說我自己，今天也是一樣的狀況，感覺整個宇宙都在針對我們這種人，但還是繼續撐下去吧，反正也沒有別的選擇。',
+  '哈哈哈哈我上週也有一模一樣的經歷，當時真的不知道是要哭還是要笑，最後選擇笑了，因為哭也沒有用，不如就這樣繼續過下去。',
+  '看到這篇真的整個胸口暖起來，終於有人說出這種感受了，我之前一直以為只有我這樣想，原來大家都懂，這個共鳴好真實。',
+  '這段話講得也太準確了吧，我存起來等等要傳給朋友看，他最近剛好在面對一樣的問題，我覺得你這幾句話比我說了半天還有用。',
+  '聽起來真的很辛苦，但你能走到這一步已經很厲害了。繼續加油，不一定每天都要進步很多，能夠撐住不放棄本身就是一種了不起的事。',
+  '這也太猛了吧？！認真嗎，你怎麼做到的？我同樣試過但一直沒辦法，是有什麼訣竅嗎？可以的話真的很想知道你是怎麼突破那個卡關點的。',
+  '下次去一定要帶我，我已經看你分享好幾次了，每次都很心動但每次都沒排到隊，如果你要再去的話先通知我，我一定馬上去訂位配合你的時間。',
+  '這個看起來也太好吃了，請問是在哪裡？地址或是店名都可以，我週末就要去找，已經饞到受不了了，這種東西不吃掉會心癢很久的。',
+  '求地址求地址！！我已經看了快五分鐘在那邊口水直流，這種帖子根本就是在折磨沒辦法馬上去的人，快點告訴我在哪裡我今晚就去。',
+  '先等我一下，我現在在外縣市，但下週一回台北我第一件事就是去這裡，你這篇文章已經被我截圖存下來了，絕對不會忘記的，等我！',
+  '怎麼可以這麼羨慕，你過的根本是我夢想中的生活，每次看到都既開心又有點酸，但主要還是替你高興啦，繼續分享這種讓人心情變好的內容。',
+  '這個我也好想試試看，之前一直猶豫說不知道適不適合自己，但看到你這樣分享感覺真的很不錯，也許我下週可以鼓起勇氣去嘗試一次。',
+  '這種感覺真的只有自己走過才懂，很多話說出來別人都覺得你在誇大，但其實那個重量是真實存在的。辛苦了，你不是一個人，大家都懂你。',
+  '終於有人說出我悶在心裡好久的話了，我以前說過一次被笑，後來就不說了，但我心裡一直是這樣想的，謝謝你勇敢說出來，這對我意義很大。',
+  '這不就是在描述我的每一個週一嗎哈哈哈哈，真的是一比一還原了，看到這篇我整個笑出來，旁邊的人都看著我，但我根本無法解釋為什麼。',
+  '等等，這是真的嗎？你沒有在誇大嗎？我以前完全沒想到可以這樣做，如果真的有效的話這也太改變遊戲規則了，認真請問你是怎麼開始的？',
+  '下次去一定記得叫我，不管多遠我都願意跑，這種體驗聽起來太值得了，一個人去我可能會猶豫，但你說的話讓我願意直接出發，一起去！',
+  '一直默默看你的分享，今天忍不住要留言說，你真的做得很好，不管是內容的品質還是你面對事情的態度，都讓我很欽佩，繼續做下去！',
+  '老天這到底是怎麼辦到的，我嘗試同樣的方法試了好幾次都沒有你這個效果，是哪個環節我做錯了嗎？可以分享一下細節嗎，真的很好奇。',
+  '謝謝你願意分享這些，讓我學到了一個之前從來沒想過的角度。有時候看別人的經驗比自己去試錯還要有效率，以後還有這種心得記得繼續寫出來。'
+]
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
@@ -18,18 +40,18 @@ module.exports = {
       attributes: ['id']
     })
 
-    await queryInterface.bulkInsert('Replies', 
-    Array.from({ length: 150 }).map((_, i) => ({
-      id: i + 1,
-      UserId: userData[Math.floor(Math.random() * userData.length)].id,
-      TweetId: tweetData[Math.floor(i / 3)].id,
-      comment: faker.lorem.text().substring(0, 20),
-      createdAt: faker.date.recent(),
-      updatedAt: new Date()
-    })), {})
+    await queryInterface.bulkInsert('Replies',
+      Array.from({ length: 150 }).map((_, i) => ({
+        id: i + 1,
+        UserId: userData[Math.floor(Math.random() * userData.length)].id,
+        TweetId: tweetData[Math.floor(i / 3)].id,
+        comment: replyPool[i % replyPool.length],
+        createdAt: new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)),
+        updatedAt: new Date()
+      })), {})
   },
 
   down: async (queryInterface, Sequelize) => {
-     await queryInterface.bulkDelete('Replies', null, {})
+    await queryInterface.bulkDelete('Replies', null, {})
   }
 }
