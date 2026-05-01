@@ -1,10 +1,6 @@
-# Simple Twitter API
+# Twitter — 後端
 
 前後端分離開發的Simple Twitter專案中使用的後端Restful API，使用Node.js, Express, MySQL開發。 
-
-### Base URL
-
-[https://pacific-mountain-24114.herokuapp.com/api](https://pacific-mountain-24114.herokuapp.com/api)
 
 
 ### 種子帳戶資料
